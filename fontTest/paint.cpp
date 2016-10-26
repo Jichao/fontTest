@@ -100,7 +100,7 @@ void DrawGenericBezier(Gdiplus::Graphics& g, const FTPoint* points, int size, in
 	Gdiplus::SolidBrush sBrush(kLineColor);
 	Gdiplus::Pen pen(&sBrush, 1.0f);
 	float t = 0;
-	float step = 0.01f;
+	float step = 0.01f / size;
 	for (; t < 1; t += step) {
 		float sumx = 0;
 		float sumy = 0;
@@ -139,13 +139,13 @@ void RenderContour(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int
 			assert(false);
 			break;
 		}
-		if (power == 1) {
-			g.DrawLine(&pen, points[index].GetPointF(unitsPerEm, kGridSize), points[index + 1].GetPointF(unitsPerEm, kGridSize));
-			index += 1;
-		} else {
+		//if (power == 1) {
+		//	g.DrawLine(&pen, points[index].GetPointF(unitsPerEm, kGridSize), points[index + 1].GetPointF(unitsPerEm, kGridSize));
+		//	index += 1;
+		//} else {
 			DrawGenericBezier(g, points.data() + index, power, unitsPerEm);
 			index += power;
-		}
+		//}
 	}
 	DrawPoints(g, points, unitsPerEm);
 }
