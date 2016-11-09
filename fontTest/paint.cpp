@@ -66,7 +66,8 @@ float GetBinomialCo(int n, int k)
 
 void DrawPoints(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int unitsPerEm)
 {
-
+	if (g_fillStyle == kFillStyle_SuckFill)
+		return;
 	Gdiplus::SolidBrush sBrush(kPointColor);
 	Gdiplus::Pen endPen(&sBrush, 1.0f);
 
@@ -135,7 +136,7 @@ FTPoint ConvertToRealPt(const FTPoint& pt, int unitsPerEm) {
 	return realPt;
 }
 
-void DrawQudarticBezier(Gdiplus::Graphics& g, const FTPoint* points, int unitsPerEm) 
+void DrawQudarticBezier(Gdiplus::Graphics& g, const FTPoint* points, int unitsPerEm, Gdiplus::GraphicsPath& path) 
 {
 	Gdiplus::SolidBrush sBrush(kLineColor);
 	Gdiplus::Pen pen(&sBrush, 1.0f);
@@ -151,9 +152,10 @@ void DrawQudarticBezier(Gdiplus::Graphics& g, const FTPoint* points, int unitsPe
 	p2.X = q1.x + 1 / 3. * (q2.x - q1.x);
 	p2.Y = q1.y + 1 / 3. * (q2.y - q1.y);
 	g.DrawBezier(&pen, p0, p1, p2, p3);
+	path.AddBezier(p0, p1, p2, p3);
 }
 
-void RenderContour(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int unitsPerEm)
+void RenderContour(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int unitsPerEm, Gdiplus::GraphicsPath& bezierPath)
 {
 	size_t index = 0;
 
@@ -167,28 +169,90 @@ void RenderContour(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int
 		}
 		if (power == 1) {
 			g.DrawLine(&pen, points[index].GetPointF(unitsPerEm, kGridSize), points[index + 1].GetPointF(unitsPerEm, kGridSize));
+			bezierPath.AddLine(points[index].GetPointF(unitsPerEm, kGridSize), points[index + 1].GetPointF(unitsPerEm, kGridSize));
 			index += 1;
 		} else {
 			if (g_lineStyle == kLineStyle_nBezier) {
 				DrawGenericBezier(g, points.data() + index, power, unitsPerEm);
 			} else {
 				assert(power == 2);
-				DrawQudarticBezier(g, points.data() + index, unitsPerEm);
+				DrawQudarticBezier(g, points.data() + index, unitsPerEm, bezierPath);
 			} 
 			index += power;
 		}
 	}
+	bezierPath.CloseFigure();
 	DrawPoints(g, points, unitsPerEm);
 }
 
 void RenderGlyph(Gdiplus::Graphics& g, const FTGlyph& glyph)
 {
+	Gdiplus::GraphicsPath bezierPath;
 	for (size_t i = 0; i < glyph.contours.size(); ++i) {
 		if (glyph.lineDraw || g_lineStyle == kLineStyle_Line)
 			RenderContourByLine(g, glyph.contours[i], glyph.unitsPerEm);
 		else
-			RenderContour(g, glyph.contours[i], glyph.unitsPerEm);
+			RenderContour(g, glyph.contours[i], glyph.unitsPerEm, bezierPath);
 	}
+	if (g_fillStyle == kFillStyle_Fill) {
+		Gdiplus::SolidBrush sBrush(Gdiplus::Color::Red);
+		bezierPath.SetFillMode(Gdiplus::FillModeWinding);
+		g.FillPath(&sBrush, &bezierPath);
+	}
+}
+
+void FillGlyph(Gdiplus::Graphics& g, const SIZE& size)
+{
+	HDC hdc = g.GetHDC();
+	Gdiplus::SolidBrush sBrush(Gdiplus::Color::Red);
+	Gdiplus::Pen pen(&sBrush, 1.0f);
+
+	for (int y = 256; y < size.cy; ++y) {
+		std::vector<int> crossPoints;
+		for (int x = 0; x < size.cx; ++x) {
+			COLORREF c = GetPixel(hdc, x, y);
+			if (c != 0x7f7f7f) {
+				crossPoints.push_back(x);
+			}
+		}
+		if (crossPoints.empty())
+			continue;
+
+		//for (size_t i = 0; i < crossPoints.size(); i++) {
+		//	SetPixel(hdc, crossPoints[i], y, 0x00ff00);
+		//}
+
+		std::vector<int> filterPoints;
+		int baseX = crossPoints[0];
+		int i = 1;
+		while (i < crossPoints.size()) {
+			if (crossPoints[i] - baseX != 1) {
+				filterPoints.push_back(baseX);
+			} else if (i == crossPoints.size() - 1) {
+				filterPoints.push_back(crossPoints[i]);
+			}
+			baseX = crossPoints[i];
+			i++;
+		}
+
+		for (size_t i = 0; i < filterPoints.size(); i++) {
+			SetPixel(hdc, filterPoints[i], y, 0x00ff00);
+		}
+
+		for (size_t i = 0; i < filterPoints.size();) {
+			if (i + 1 >= filterPoints.size())
+				break;
+			HPEN hPen;
+			HPEN hPenOld;
+			hPen = CreatePen(PS_SOLID, 1, RGB(255, 0, 0));
+			hPenOld = (HPEN)SelectObject(hdc, hPen);
+			MoveToEx(hdc, filterPoints[i], y, NULL);
+			LineTo(hdc, filterPoints[i + 1], y);
+			SelectObject(hdc, hPenOld);
+			i += 2;
+		}
+	}
+	g.ReleaseHDC(hdc);
 }
 
 VOID OnDraw(Gdiplus::Graphics& g, const SIZE& size)
@@ -207,7 +271,9 @@ VOID OnDraw(Gdiplus::Graphics& g, const SIZE& size)
 		int x = kGridSize * col + kGridMargin * (col + 1);
 		g.TranslateTransform(x, y);
 		RenderGlyph(g, glyphs[i]);
-
+		if (g_fillStyle == kFillStyle_SuckFill) {
+			FillGlyph(g, size);
+		}
 		Gdiplus::SolidBrush sBrush(Gdiplus::Color(0xff, 0xff, 0xff, 0x00));
 		Gdiplus::Pen boxPen(&sBrush, 1.0f);
 		g.DrawRectangle(&boxPen, 0, 0, kGridSize, kGridSize);

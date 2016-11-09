@@ -1,8 +1,9 @@
 #pragma once
 
-enum FillMode {
-	kFillMode_OnlyContour,
-	kFillMode_Fill,
+enum FillStyle {
+	kFillStyle_OnlyContour,
+	kFillStyle_Fill,
+	kFillStyle_SuckFill,
 };
 
 enum DrawEngine {
@@ -16,6 +17,6 @@ enum LineStyle {
 	kLineStyle_nBezier
 };
 
-extern int g_fillMode;
+extern int g_fillStyle;
 extern int g_lineStyle;
 extern int g_drawEngine;

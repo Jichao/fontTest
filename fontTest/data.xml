@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
-  <TTGlyph name="one" xMin="92" yMin="0" xMax="794" yMax="1434" unitsPerEm="2048">
+  <!--<TTGlyph name="one" xMin="92" yMin="0" xMax="794" yMax="1434" unitsPerEm="2048">
     <contour>
       <pt x="112" y="0" on="1"/>
       <pt x="112" y="50" on="1"/>
@@ -25,10 +25,9 @@
       <assembly>
       </assembly>
     </instructions>
-  </TTGlyph>
+  </TTGlyph>-->
   
   <TTGlyph name="uni6653" xMin="154" yMin="-75" xMax="927" yMax="704" unitsPerEm="1000">
-
     <contour>
 
       <pt x="641" y="347" on="1"/>
