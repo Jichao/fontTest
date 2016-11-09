@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "fontTest.h"
 #include "paint.h"
+#include "command.h"
 #include <gdiplus.h>
 
 #define MAX_LOADSTRING 100
@@ -21,6 +22,7 @@ ATOM				MyRegisterClass(HINSTANCE hInstance);
 BOOL				InitInstance(HINSTANCE, int);
 LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
+
 
 int APIENTRY _tWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -113,7 +115,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    {
       return FALSE;
    }
-
+   UpdateMenuState(hWnd);
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -150,6 +152,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			DestroyWindow(hWnd);
 			break;
 		default:
+			OnCommand(hWnd, wmId);
 			return DefWindowProc(hWnd, message, wParam, lParam);
 		}
 		break;

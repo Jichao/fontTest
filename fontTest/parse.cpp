@@ -1,15 +1,28 @@
 #include "stdafx.h"
 #include "parse.h"
+#include "config.h"
 
 bool ParseContour(const tinyxml2::XMLElement* root, std::vector<FTPoint>* pRes)
 {
 	auto xmlPt = root->FirstChildElement("pt");
+	FTPoint lastPt;
+	lastPt.on = true;
 	while (xmlPt) {
 		FTPoint pt;
 		xmlPt->QueryAttribute("x", &pt.x);
 		xmlPt->QueryAttribute("y", &pt.y);
 		xmlPt->QueryAttribute("on", &pt.on);
+		if (g_lineStyle == kLineStyle_2Bezier) {
+			if (!lastPt.on && !pt.on) {
+				FTPoint midPt;
+				midPt.x = (lastPt.x + pt.x) / 2;
+				midPt.y = (lastPt.y + pt.y) / 2;
+				midPt.on = true;
+				pRes->push_back(midPt);
+			}
+		}
 		pRes->push_back(pt);
+		lastPt = pt;
 		xmlPt = xmlPt->NextSiblingElement("pt");
 	}
 	if (!pRes->empty()) {

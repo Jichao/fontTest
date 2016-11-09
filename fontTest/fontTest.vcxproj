@@ -82,6 +82,8 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="command.h" />
+    <ClInclude Include="config.h" />
     <ClInclude Include="fontTest.h" />
     <ClInclude Include="paint.h" />
     <ClInclude Include="parse.h" />
@@ -93,6 +95,8 @@
     <ClInclude Include="types.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="command.cpp" />
+    <ClCompile Include="config.cpp" />
     <ClCompile Include="fontTest.cpp" />
     <ClCompile Include="paint.cpp" />
     <ClCompile Include="parse.cpp" />

@@ -2,6 +2,7 @@
 #include "trace.h"
 #include "types.h"
 #include "parse.h"
+#include "config.h"
 #include <math.h>
 #include "StringUtils.h"
 
@@ -100,7 +101,7 @@ void DrawGenericBezier(Gdiplus::Graphics& g, const FTPoint* points, int size, in
 	Gdiplus::SolidBrush sBrush(kLineColor);
 	Gdiplus::Pen pen(&sBrush, 1.0f);
 	float t = 0;
-	float step = 0.01f;
+	float step = 0.01f / size;
 	for (; t < 1; t += step) {
 		float sumx = 0;
 		float sumy = 0;
@@ -127,6 +128,31 @@ void RenderContourByLine(Gdiplus::Graphics& g, const std::vector<FTPoint>& point
 	DrawPoints(g, points, unitsPerEm);
 }
 
+FTPoint ConvertToRealPt(const FTPoint& pt, int unitsPerEm) {
+	FTPoint realPt;
+	realPt.x = (((float)pt.x) / unitsPerEm * kGridSize);
+	realPt.y = (unitsPerEm - (float)pt.y) / unitsPerEm * kGridSize;
+	return realPt;
+}
+
+void DrawQudarticBezier(Gdiplus::Graphics& g, const FTPoint* points, int unitsPerEm) 
+{
+	Gdiplus::SolidBrush sBrush(kLineColor);
+	Gdiplus::Pen pen(&sBrush, 1.0f);
+	FTPoint q0 = ConvertToRealPt(points[0], unitsPerEm);
+	FTPoint q1 = ConvertToRealPt(points[1], unitsPerEm);
+	FTPoint q2 = ConvertToRealPt(points[2], unitsPerEm);
+	Gdiplus::PointF p0(q0.x, q0.y);
+	Gdiplus::PointF p3(q2.x, q2.y);
+	Gdiplus::PointF p1;
+	Gdiplus::PointF p2;
+	p1.X = q0.x + 2 / 3. * (q1.x - q0.x);
+	p1.Y = q0.y + 2 / 3. * (q1.y - q0.y);
+	p2.X = q1.x + 1 / 3. * (q2.x - q1.x);
+	p2.Y = q1.y + 1 / 3. * (q2.y - q1.y);
+	g.DrawBezier(&pen, p0, p1, p2, p3);
+}
+
 void RenderContour(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int unitsPerEm)
 {
 	size_t index = 0;
@@ -143,7 +169,12 @@ void RenderContour(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int
 			g.DrawLine(&pen, points[index].GetPointF(unitsPerEm, kGridSize), points[index + 1].GetPointF(unitsPerEm, kGridSize));
 			index += 1;
 		} else {
-			DrawGenericBezier(g, points.data() + index, power, unitsPerEm);
+			if (g_lineStyle == kLineStyle_nBezier) {
+				DrawGenericBezier(g, points.data() + index, power, unitsPerEm);
+			} else {
+				assert(power == 2);
+				DrawQudarticBezier(g, points.data() + index, unitsPerEm);
+			} 
 			index += power;
 		}
 	}
@@ -153,7 +184,7 @@ void RenderContour(Gdiplus::Graphics& g, const std::vector<FTPoint>& points, int
 void RenderGlyph(Gdiplus::Graphics& g, const FTGlyph& glyph)
 {
 	for (size_t i = 0; i < glyph.contours.size(); ++i) {
-		if (glyph.lineDraw)
+		if (glyph.lineDraw || g_lineStyle == kLineStyle_Line)
 			RenderContourByLine(g, glyph.contours[i], glyph.unitsPerEm);
 		else
 			RenderContour(g, glyph.contours[i], glyph.unitsPerEm);
